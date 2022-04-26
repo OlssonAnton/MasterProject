@@ -1,0 +1,16 @@
+launch run12
+shower=Pythia8
+detector = Delphes
+analysis=MadAnalysis5
+madspin=ON
+reweight=OFF
+set mtad 185
+set mvd 180
+set gD 3
+set nevents 10000
+set mtap 800
+set decay 6000115 auto
+set decay 6000023 auto
+set decay 6000215 auto
+set decay 6000025 auto
+set decay 6000024 auto

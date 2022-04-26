@@ -1,0 +1,5 @@
+set main.recast = on
+set main.recast.store_root = True
+set main.recast.card_path = my_recast_card
+import ../../masterproject/tauDMproduction/newalldiagrams/Events/run11/tag_4_pythia8_events.hepmc
+submit
