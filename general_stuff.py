@@ -33,18 +33,22 @@ def read_and_write(file, read, write):
 def inclusive_range(start, end, step):
     return np.arange(start, end+step, step).tolist()
 
-def z(L,sigma_s, sigma_b):
-    return L**(0.5) * sigma_s / ((sigma_s + sigma_b)**(0.5))
+def z(luminosity, signal, background): #signal/background in either cross sections or number of events
+    #return luminosity**(0.5) * signal / ((signal + background)**(0.5))
+    print("z: ", signal / (signal + background)**0.5)
+    return signal / (signal + background)**0.5
 
-def generate_mvd_list(mvd_min, mvd_step, mtad_list):
+def generate_mvd_mtad_lists(mvd_min, mvd_step, mtad_list):
     mvd_list = []
+    mtad_long_list = []
     mvd = mvd_min
     for mtad in mtad_list:
         while(mvd < mtad):
             mvd_list.append(mvd)
             mvd += mvd_step
+            mtad_long_list.append(mtad)
         mvd = mvd_min
-    return mvd_list
+    return [mvd_list, mtad_long_list]
 
 def z_list(L,sigma_s, sigma_b): #Significance (z = 2 corresponds to 95% C.L.)
     z_list = []

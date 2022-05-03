@@ -5,26 +5,34 @@ import lhe_parser
 import shutil
 import gzip
 from mpl_toolkits import mplot3d
-from significance_script import significance_calculator
-from general_stuff import read_and_write, generate_mvd_list, inclusive_range, number_of_points, edit_line
-from myplots import z_plot, z_plot2, sigma_plot, z_contour_plot, z_contour_plot_old
+from general_stuff import read_and_write, generate_mvd_mtad_lists, inclusive_range, number_of_points, edit_line
+from myplots import asymptotic_limit_significance_color, asymptotic_limit_significance_contour, exclusion_discovery_significance_contours
 
-def retrieve_cross_sections(scan_path):
-    if(exists(scan_path + '/saved_cross_sections')):
-        string_list = open(scan_path + '/saved_cross_sections').readlines()[0]
-        fixed_string = ''.join(string_list.split('[', 1))
-        fixed_string = ''.join(fixed_string.split(']', 1))
-        fixed_string = fixed_string.replace(',', '')
-        list_of_floats = list(fixed_string.split(' '))
-        for i in range(len(list_of_floats)):
-            list_of_floats[i] = float(list_of_floats[i])
-        return list_of_floats
+def retrieve_cross_sections(event_path):
+    print(event_path)
+    if(exists(event_path + '/saved_data')):
+        saved_cross_sections = open(event_path + '/saved_data').readlines()[0]
+        if not saved_cross_sections == '[]\n':
+            print(saved_cross_sections)
+            fixed_string = ''.join(saved_cross_sections.split('[', 1))
+            fixed_string = ''.join(fixed_string.split(']', 1))
+            fixed_string = fixed_string.replace(',', '')
+            list_of_floats = list(fixed_string.split(' '))
+            for i in range(len(list_of_floats)):
+                list_of_floats[i] = float(list_of_floats[i])
+            return list_of_floats
+    else: #create and setup an empy data_file
+        save_file = open(event_path + '/saved_data', 'w')
+        save_file_setup = ['[]\n', '[]\n', '[]\n', '[]\n']
+        save_file_setup = ''.join(save_file_setup)
+        save_file.write(save_file_setup)
+        save_file.close()
 
-    number_of_scans = len(next(os.walk(scan_path))[1]) #points  #Number of simulations to be plotted
+    number_of_scans = len(next(os.walk(event_path))[1]) #points  #Number of simulations to be plotted
     all_cross_sections = []
     for i in range(number_of_scans):
         event_exist = True #Safeguard for opening file, sets to false if LHE file missing
-        run_path = scan_path + '/run' + str(i + 1) #Path to folder containing all simulations
+        run_path = event_path + '/run' + str(i + 1) #Path to folder containing all simulations
         if exists(run_path):
             event_path = run_path + '/unweighted_events.lhe'
             if not(exists(event_path)): #Is there an unzipped event file?
@@ -51,20 +59,28 @@ def retrieve_cross_sections(scan_path):
         else:
             print('No run' + str(i+1) + ' directory')
             all_cross_sections.append(0)
-
-    with open(scan_path + '/saved_cross_sections', 'w') as save_file:
-        save_file.write(str(all_cross_sections))
+    save_file = open(event_path + '/saved_data')
+    data = save_file.readlines()
+    save_file.close()
+    data[0] = str(all_cross_sections) + '\n'
+    save_file = open(event_path + '/saved_data', 'w')
+    new_data = ''.join(data)
+    save_file.write(new_data)
+    save_file.close()
+    # with open(event_path + '/saved_data', 'w') as save_file:
+    #     save_file.write(str(data))
 
     return all_cross_sections
 
-def run_simulation(mvd_properties, mtad_properties, run_name, production_directory):
+def run_simulation(mvd_properties, mtad_properties, run_name, output_directory):
     mtad_min = mtad_properties[0]
     mtad_end = mtad_properties[1]
     mtad_step = mtad_properties[2]
     mvd_min = mvd_properties[0]
     mvd_end = mvd_properties[1]
     mvd_step = mvd_properties[2]
-    madevent_path = production_directory + '/bin/madevent'
+    mtad_list = inclusive_range(mtad_min, mtad_end, mtad_step)
+    madevent_path = output_directory + '/bin/madevent'
     madanalysis_path = '../../HEPTools/madanalysis5/madanalysis5/bin/ma5'
     madevent_script_file = './madevent_script.txt'
     madanalysis_script_file = './madanalysis_script.txt'
@@ -143,28 +159,42 @@ def run_simulation(mvd_properties, mtad_properties, run_name, production_directo
         mtad += mtad_step
         mvd = mvd_min
 
-def plot_stuff():
-    mtad = inclusive_range(135, 235, 25)
-    mvd = inclusive_range(80, 230, 25)
+    mass_lists = generate_mvd_mtad_lists(mvd_min, mvd_step, mtad_list)
+    mvd_data = mass_lists[0] + '\n'
+    mtad_data = mass_lists[1] + '\n'
+    save_file = open(event_path + '/saved_data', 'w')
+    save_file_setup = ['[]\n', '[]\n', '[]\n', mvd_data, mtad_data]
+    save_file_setup = ''.join(save_file_setup)
+    save_file.write(save_file_setup)
+    save_file.close()
+
+
+def plot(analysis_paths, event_paths):
+    mtad = inclusive_range(85, 235, 25)
+    mvd = inclusive_range(55, 230, 25)
     print('NUMBER OF POINTS: ', number_of_points(mvd, mtad))
 
-    #z_lists = significance_calculator('./gD1')
-    #z_lists = significance_calculator('../../HEPTools/madanalysis5/madanalysis5/newmodel1point/')
-    #print('Discovery Significance: ', z_lists[0])
-    #print('Exclusion Significance: ', z_lists[1])
+    alldiagrams_event_path = '../../masterproject/tauDMproduction/alldiagrams/Events/careful_scan_pythia_delphes'
+    resonance_event_path = '../../masterproject/tauDMproduction/tadresonance/Events/careful_scan_pythia_delphes'
+    newalldiagrams_event_path = '../../masterproject/tauDMproduction/newalldiagrams/Events/newscan/'
 
-    alldiagrams_scan_path = '../../masterproject/tauDMproduction/alldiagrams/Events/careful_scan_pythia_delphes'
-    resonance_scan_path = '../../masterproject/tauDMproduction/tadresonance/Events/careful_scan_pythia_delphes'
-    newalldiagrams_scan_path = '../../masterproject/tauDMproduction/newalldiagrams/Events/newscan/'
-    all_cross_sections = retrieve_cross_sections(newalldiagrams_scan_path)
-    #print('CROSS SECTIONS: ', all_cross_sections)
-    #print('CROSS SECTION LENGTH: ', len(all_cross_sections))
+    cross_section_set = [retrieve_cross_sections(gD1_event_path), retrieve_cross_sections(gD3_event_path)]
+    print("gD1 cross sections", retrieve_cross_sections(gD1_event_path))
+    print("gD3 cross sections", retrieve_cross_sections(gD3_event_path))
 
-    SM_background = 0.4312 + 0.02746 * 2 #2 neutrino final state processes (SM background)
-    L3 = 300 #Luminosity fb^-1, end of Run3
-    #z_contour_plot_old(L3, all_cross_sections, SM_background, mvd, mtad)
-    z_contour_plot(L3, all_cross_sections, SM_background, mvd, mtad)
+    #SM_background = 0.4312 + 0.02746 * 2 #2 neutrino final state processes (SM background)
+    luminosity = 139 #Luminosity = 300 fb^-1, end of Run3 (L3)
+    #asymptotic_limit_significance_color(L3, cross_section_set, SM_background, mvd, mtad, ['./gD3'])
+    #asymptotic_limit_significance_contour(luminosity, cross_section_set, mvd, mtad, ['./gD1', './gD3'])
+    exclusion_discovery_significance_contours(luminosity, cross_section_set, mvd, mtad, analysis_paths, event_paths)
 
 if '__main__' == __name__:
-    plot_stuff()
-    #run_simulation([80, 230, 25], [135, 235, 25], [], '../../masterproject/tauDMproduction/newalldiagrams')
+    #Running from madgraph/various directory
+    gD1_event_path = '../../masterproject/tauDMproduction/newalldiagrams/Events/gD1'
+    gD3_event_path = '../../masterproject/tauDMproduction/newalldiagrams/Events/gD3'
+    gD1_analysis_path = './gD1'
+    gD3_analysis_path = './gD3'
+    event_paths = [gD1_event_path, gD3_event_path]
+    analysis_paths = [gD1_analysis_path, gD3_analysis_path]
+    plot(analysis_paths, event_paths)
+    #run_simulation([5, 230, 25], [35, 235, 25], [], '../../masterproject/tauDMproduction/no_mixing')
