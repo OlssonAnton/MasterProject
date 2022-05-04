@@ -9,11 +9,9 @@ from general_stuff import read_and_write, generate_mvd_mtad_lists, inclusive_ran
 from myplots import asymptotic_limit_significance_color, asymptotic_limit_significance_contour, exclusion_discovery_significance_contours
 
 def retrieve_cross_sections(event_path):
-    print(event_path)
-    if(exists(event_path + '/saved_data')):
+    if (exists(event_path + '/saved_data')):
         saved_cross_sections = open(event_path + '/saved_data').readlines()[0]
         if not saved_cross_sections == '[]\n':
-            print(saved_cross_sections)
             fixed_string = ''.join(saved_cross_sections.split('[', 1))
             fixed_string = ''.join(fixed_string.split(']', 1))
             fixed_string = fixed_string.replace(',', '')
@@ -170,21 +168,46 @@ def run_simulation(mvd_properties, mtad_properties, run_name, output_directory):
 
 
 def plot(analysis_paths, event_paths):
-    mtad = inclusive_range(85, 235, 25)
-    mvd = inclusive_range(55, 230, 25)
+    def retrieve_mass_points():
+        saved_data = []
+        for path in event_paths:
+            save_file = open(path + '/saved_data', 'r')
+            saved_data.append(save_file.readlines())
+        mass_lists = [saved_data[0][3], saved_data[0][4]]
+        for i in range(len(mass_lists)):
+            mass_lists[i] = ''.join(mass_lists[i].split('[', 1))
+            mass_lists[i] = ''.join(mass_lists[i].split(']', 1))
+            mass_lists[i] = mass_lists[i].replace(',', '')
+            list_of_floats = list(mass_lists[i].split(' '))
+            for j in range(len(list_of_floats)):
+                list_of_floats[j] = float(list_of_floats[j])
+            mass_lists[i] = list_of_floats
+        mvd_long_list = mass_lists[0]
+        mtad_long_list = mass_lists[1]
+        mvd_step = 0
+        if len(mvd_long_list) > 1:
+            if not mvd_long_list[mvd_long_list.index(mvd_long_list[-1])] == mvd_long_list[mvd_long_list.index(mvd_long_list[-1]) - 1]:
+                mvd_step = mvd_long_list[mvd_long_list.index(mvd_long_list[-1])] - mvd_long_list[mvd_long_list.index(mvd_long_list[-1]) - 1]
+        mtad_step = 0
+        if len(mtad_long_list) > 1:
+            if not mtad_long_list[mtad_long_list.index(mtad_long_list[-1])] == mtad_long_list[mtad_long_list.index(mtad_long_list[-1]) - 1]:
+                mtad_step = mtad_long_list[mtad_long_list.index(mtad_long_list[-1])] - mtad_long_list[mtad_long_list.index(mtad_long_list[-1]) - 1]
+        mvd = inclusive_range(mvd_long_list[0], mvd_long_list[-1], mvd_step)
+        mtad = inclusive_range(mtad_long_list[0], mtad_long_list[-1], mtad_step)
+        return [mvd, mtad]
+    mass_points = retrieve_mass_points()
+    mvd = mass_points[0]
+    mtad = mass_points[1]
+
     print('NUMBER OF POINTS: ', number_of_points(mvd, mtad))
 
-    alldiagrams_event_path = '../../masterproject/tauDMproduction/alldiagrams/Events/careful_scan_pythia_delphes'
-    resonance_event_path = '../../masterproject/tauDMproduction/tadresonance/Events/careful_scan_pythia_delphes'
-    newalldiagrams_event_path = '../../masterproject/tauDMproduction/newalldiagrams/Events/newscan/'
-
     cross_section_set = [retrieve_cross_sections(gD1_event_path), retrieve_cross_sections(gD3_event_path)]
-    print("gD1 cross sections", retrieve_cross_sections(gD1_event_path))
-    print("gD3 cross sections", retrieve_cross_sections(gD3_event_path))
+    # print("gD1 cross sections", retrieve_cross_sections(gD1_event_path))
+    # print("gD3 cross sections", retrieve_cross_sections(gD3_event_path))
 
     #SM_background = 0.4312 + 0.02746 * 2 #2 neutrino final state processes (SM background)
     luminosity = 139 #Luminosity = 300 fb^-1, end of Run3 (L3)
-    #asymptotic_limit_significance_color(L3, cross_section_set, SM_background, mvd, mtad, ['./gD3'])
+    #asymptotic_limit_significance_color(L3, cross_section_set, mvd, mtad, ['./gD3'])
     #asymptotic_limit_significance_contour(luminosity, cross_section_set, mvd, mtad, ['./gD1', './gD3'])
     exclusion_discovery_significance_contours(luminosity, cross_section_set, mvd, mtad, analysis_paths, event_paths)
 
