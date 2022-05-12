@@ -3,79 +3,11 @@ import numpy as np
 import os
 from os.path import exists
 import lhe_parser
-import shutil
 import gzip
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
-from general_stuff import read_save_file, read_and_write, generate_mvd_mtad_lists, inclusive_range, number_of_points, edit_line, asimov_significance
+from general_stuff import read_save_file, inclusive_range, edit_line, asimov_significance
 from significance_script import significance_calculator
-
-def create_significance_arrays(luminosity, signals, mvd, mtad, significance_type, analysis_paths, event_paths):
-    mvd_arr = np.array(mvd)
-    mtad_arr = np.array(mtad)
-    X, Y = np.meshgrid(mtad_arr, mvd_arr)
-    significances = []
-    discoveries = []
-    exclusions = []
-
-    for i in range(len(signals)):
-        discovery_matrix = []
-        exclusion_matrix = []
-        significance_matrix = []
-
-        if significance_type == 'Zstats':
-            #Asymptotic significances not generated in this case
-            significance_lists = significance_calculator(analysis_paths[i], signals[i], event_paths[i], 'Zstats')
-            discovery_list = significance_lists[1]
-            exclusion_list = significance_lists[2]
-            counter = 1
-            print('Discovery List', discovery_list)
-            print('Exclusion List', exclusion_list)
-            while(discovery_list):
-                discovery_matrix.append(discovery_list[:counter])
-                del discovery_list[:counter]
-                exclusion_matrix.append(exclusion_list[:counter])
-                del exclusion_list[:counter]
-                if counter < 10:
-                    counter += 1
-            for i in range(len(discovery_matrix)):
-                missing_length = len(mvd) - len(discovery_matrix[i])
-                discovery_matrix[i] += [0] * missing_length
-                exclusion_matrix[i] += [0] * missing_length
-
-        if significance_type == 'asimov':
-            #Zstats significances not generated in this case
-            all_significance_lists = significance_calculator(analysis_paths[i], signals[i], event_paths[i], 'asimov')
-            significance_list = all_significance_lists[0]
-            counter = 1
-            while(significance_list):
-                significance_matrix.append(significance_list[:counter])
-                del significance_list[:counter]
-                if counter < 10:
-                    counter += 1
-            for i in range(len(significance_matrix)):
-                missing_length = len(mvd) - len(significance_matrix[i])
-                significance_matrix[i] += [0] * missing_length
-
-        #Make arrays into numpy arrays for plotting
-        significance_array = np.array(significance_matrix)
-        print(len(exclusion_matrix))
-        for line in exclusion_matrix:
-            print(len(line))
-        exclusion_array = np.array(exclusion_matrix)
-        discovery_array = np.array(discovery_matrix)
-
-        #Putting DM candidate on y-axis, so z-values have to be transposed
-        significance_array = np.transpose(significance_array)
-        exclusion_array = np.transpose(exclusion_array)
-        discovery_array = np.transpose(discovery_array)
-
-        #If plotting several parameter-sets in one graph
-        significances.append(significance_array)
-        discoveries.append(discovery_array)
-        exclusions.append(exclusion_array)
-
-    return [X,Y, significances, exclusions, discoveries]
 
 def retrieve_cross_sections_efficiencies(scan_path):
     saved_scan_data_path = scan_path + '/saved_scan_data'

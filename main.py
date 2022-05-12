@@ -1,13 +1,9 @@
 import os
-import math
-import numpy as np
 from os.path import exists
 import subprocess
-import lhe_parser
 import shutil
 import gzip
-from mpl_toolkits import mplot3d
-from general_stuff import read_save_file, read_and_write, generate_mvd_mtad_lists, inclusive_range, number_of_points, edit_line
+from general_stuff import inclusive_range, edit_line
 from myplots import asimov_significance_color, asimov_significance_contour, exclusion_discovery_significance_contours
 
 def run_simulation(mvd_properties, mtad_properties, dark_coupling, output_directory):
