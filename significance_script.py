@@ -19,21 +19,24 @@ def significance_calculator(scan_path, luminosity, cross_sections, low_region_ef
             low_region_signal = luminosity * cross_section * low_region_efficiencies[i][j] #luminosity in fb^-1, cross_section in fb (converted)
             high_region_signal = luminosity * cross_section * high_region_efficiencies[i][j]
 
-            if calculator == 'asimov':
-                z_low = asimov_significance(luminosity, low_region_signal, low_region_background)
-                z_high = asimov_significance(luminosity, high_region_signal, high_region_background)
-
-                if z_low > z_high:
-                    asimov_array[i][j] = z_low
-                else:
-                    asimov_array[i][j] = z_high
-
             if calculator == 'Zstats':
-                z_disc_low_region_signal = Zdisc(low_region_signal, low_region_background, low_region_background_uncertainty)
-                z_disc_high_region_signal = Zdisc(high_region_signal, high_region_background, high_region_background_uncertainty)
+                z_disc_low_region_signal = 0
+                z_disc_high_region_signal = 0
+                z_excl_low_region_signal = 0
+                z_excl_high_region_signal = 0
+                if (low_region_signal > 500) or (high_region_signal > 500): #Zstats can't handle too large number of events, compared to background
+                    print('Too many signals for Zstats!')
+                    z_disc_low_region_signal = asimov_significance(low_region_signal, low_region_background, low_region_background_uncertainty)
+                    z_disc_high_region_signal = asimov_significance(high_region_signal, high_region_background, high_region_background_uncertainty)
 
-                z_excl_low_region_signal = Zexcl(low_region_signal, low_region_background, low_region_background_uncertainty)
-                z_excl_high_region_signal = Zexcl(high_region_signal, high_region_background, high_region_background_uncertainty)
+                    z_excl_low_region_signal = asimov_significance(low_region_signal, low_region_background, low_region_background_uncertainty)
+                    z_excl_high_region_signal = asimov_significance(high_region_signal, high_region_background, high_region_background_uncertainty)
+                else:
+                    z_disc_low_region_signal = Zdisc(low_region_signal, low_region_background, low_region_background_uncertainty)
+                    z_disc_high_region_signal = Zdisc(high_region_signal, high_region_background, high_region_background_uncertainty)
+
+                    z_excl_low_region_signal = Zexcl(low_region_signal, low_region_background, low_region_background_uncertainty)
+                    z_excl_high_region_signal = Zexcl(high_region_signal, high_region_background, high_region_background_uncertainty)
 
                 if z_disc_low_region_signal > z_disc_high_region_signal:
                     discovery_array[i][j] = z_disc_low_region_signal
