@@ -50,7 +50,7 @@ def relic_density(scan_path, dark_coupling):
                 relic_density_matrix[i][j] = relic_density #Add relic density to correct place in relic density 2d array
     if relic_saved == False:
         data_file_path = './micromegas_5.2.13/masterproject_FG/work/models/vars1.mdl' #From madgraph/various directory
-        edit_line(data_file_path, 3, 'gD             |'+str(0.2)+'         |SU2D coupling constant      ')
+        edit_line(data_file_path, 3, 'gD             |'+str(dark_coupling)+'         |SU2D coupling constant      ')
         edit_line(data_file_path, 36, 'Mtap           |800          |Mass of tap.')
         edit_line(data_file_path, 38, 'Mh2            |300          |Mass of h2.')
 

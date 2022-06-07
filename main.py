@@ -1,22 +1,16 @@
-from myplots import asimov_significance_color, asimov_significance_contour, exclusion_discovery_significance_contours
 from simulation import run_simulation
+from myplots import exclusion_discovery_significance_contours
 
 def main():
-    luminosity = 300 #fb^-1
-    #plot() decides what type of data is to be plotted
-    def plot(scan_paths, luminosity):
-        #asimov_significance_color(scan_paths, luminosity)
-        #asimov_significance_contour(scan_paths, luminosity)
-        exclusion_discovery_significance_contours(scan_paths, luminosity)
+    luminosity = [139] #fb^-1
 
     gD_001_path = '../../masterproject/tauDMproduction/no_mixing/Events/mvd5-305_mtad10-560_gD0.01'
     gD_1_path = '../../masterproject/tauDMproduction/no_mixing/Events/mvd5-455_mtad10-760_gD1'
 
-    #plot([gD_001_path], luminosity)
-    plot([gD_1_path], luminosity)
-    plot([gD_001_path, gD_1_path], luminosity)
+    exclusion_discovery_significance_contours([gD_001_path], luminosity, decreased_background_uncertainty = False,
+    relic_density_constraint = False, width_mass_ratio_lines = False)
 
-    #run_simulation([5, 5, 50], [10, 10, 50], 0.01, '../../masterproject/tauDMproduction/no_mixing') #mvd, mtad, gD, output_directory
+    #run_simulation([405, 505, 50], [760, 760, 50], 0.01, 800, '../../masterproject/tauDMproduction/no_mixing') #mvd, mtad, gD, output_directory
 
 if '__main__' == __name__:
     main()

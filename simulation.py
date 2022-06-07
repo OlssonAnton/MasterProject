@@ -5,7 +5,7 @@ import shutil
 import gzip
 from general_stuff import inclusive_range, edit_line
 
-def run_simulation(mvd_properties, mtad_properties, dark_coupling, output_directory):
+def run_simulation(mvd_properties, mtad_properties, dark_coupling, mtap, output_directory):
     mtad_min = mtad_properties[0] #Retrieve mass data for odd dark tau and DM candidate
     mtad_max = mtad_properties[1]
     mtad_step = mtad_properties[2]
@@ -19,6 +19,7 @@ def run_simulation(mvd_properties, mtad_properties, dark_coupling, output_direct
     event_directory = output_directory + '/Events'
 
     edit_line(madevent_script_file, 9, 'set gD ' + str(dark_coupling)) #Set the value for the dark coupling from the input parameter
+    edit_line(madevent_script_file, 10, 'set mtap ' + str(mtap))
     scan_name = 'mvd' + str(mvd_min) + '-' + str(mvd_max) + '_mtad' + str(mtad_min) + '-' + str(mtad_max) + '_gD' + str(dark_coupling)
     scan_directory = event_directory + '/' + scan_name
     if not exists(scan_directory):
@@ -26,7 +27,7 @@ def run_simulation(mvd_properties, mtad_properties, dark_coupling, output_direct
 
     #Setup the save file which will contain cross sections, the scan region, low- and high signal region detector effiencies, relic_densities
     save_file = open(scan_directory + '/saved_scan_data', 'w')
-    save_file_setup = ['[]\n', str(mvd_properties) + '\n', str(mtad_properties) + '\n', '[]\n', '[]\n', '[]\n', '[]\n', '[]\n']
+    save_file_setup = ['[]\n', str(mvd_properties) + '\n', str(mtad_properties) + '\n', '[]\n', '[]\n', '[]\n', '[]\n', str(dark_coupling) + '\n', str(mtap) + '\n']
     save_file_setup = ''.join(save_file_setup)
     save_file.write(save_file_setup)
     save_file.close()

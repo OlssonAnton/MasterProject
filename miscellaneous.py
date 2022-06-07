@@ -1,5 +1,5 @@
 import numpy as np
-import math
+import cmath
 
 #Help function that reads lists of data in string format and return lists of floats
 def read_save_file(file, line_index):
@@ -30,6 +30,5 @@ def inclusive_range(start, end, step):
 
 # Basic way of computing significance of signal compared to background
 def asimov_significance(S, B, sigma_b): #(signal and background in nr. of events)
-    return math.sqrt(2 * ((S + B) * math.log(((S+B)*(B + sigma_b**2))/(B**2 + (S + B)*sigma_b**2))
-    - (B**2/sigma_b**2) * math.log(1 + sigma_b**2 * S / (B*(B + sigma_b**2)))))
-    #return signal / (signal + background)**0.5
+    return cmath.sqrt(2 * ((S + B) * cmath.log(((S+B)*(B + sigma_b**2))/(B**2 + (S + B)*sigma_b**2))
+    - (B**2/sigma_b**2) * cmath.log(1 + ((sigma_b**2 * S) / (B*(B + sigma_b**2))))))
