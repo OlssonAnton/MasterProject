@@ -1,13 +1,13 @@
-launch mvd5_mtad10
+launch mvd505_mtad760
 shower=Pythia8
 detector = Delphes
 analysis=MadAnalysis5
 madspin=ON
 reweight=OFF
-set mtad 510
-set mvd 55
+set mtad 810
+set mvd 405
 set nevents 10000
-set gD 1
+set gD 0.01
 set mtap 800
 set decay 6000115 auto
 set decay 6000023 auto

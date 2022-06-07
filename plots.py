@@ -10,10 +10,21 @@ from general_stuff import read_save_file, inclusive_range, edit_line, asimov_sig
 from significance_script import significance_calculator
 from relic_density import relic_density
 
+def tau_odd_decay_width(MtaD, MVD, Mtap, gD):
+    return ((MtaD**2 - MVD**2)*((gD**2*MtaD**2*TTAR(MtaD, Mtap)**2)/2. + (gD**2*MtaD**4*TTAR(MtaD, Mtap)**2)/(2.*MVD**2) - gD**2*MVD**2*TTAR(MtaD, Mtap)**2))/(32.*math.pi*abs(MtaD)**3)
+
+def TTAR(MtaD, Mtap):
+    return math.sin(thetataR(MtaD, Mtap))
+
+def thetataR(MtaD, Mtap):
+    return math.asin(math.sqrt((-MtaD**2 + Mtap**2)/Mtap**2))
+
 def retrieve_data(scan_path):
     saved_scan_data_path = scan_path + '/saved_scan_data' # Define path to save file for scan
     mvd_properties = read_save_file(saved_scan_data_path, 1) #Retrieve mass data from the save file
     mtad_properties = read_save_file(saved_scan_data_path, 2)
+    gD = read_save_file(saved_scan_data_path, 7)[0]
+    mtap = read_save_file(saved_scan_data_path, 8)[0]
     #Masses saved as floats are converted to ints with floor()
     mvd_min = math.floor(mvd_properties[0])
     mvd_max = math.floor(mvd_properties[1])
@@ -127,6 +138,7 @@ def retrieve_data(scan_path):
         mtad_index = 0
         mvd = 0
         mtad = 0
+
         for file in files:
             if file == 'saved_data': #Find the data file to see which point (mvd, mtad) the loop is at
                 save_file_path = os.path.join(root, file) # Attach full file path to '/saved_data'
@@ -177,11 +189,7 @@ def retrieve_data(scan_path):
         if width_mass_ratios_saved == False:
             for file in files:
                 if file == 'mvd' + str(math.floor(mvd)) + '_mtad' + str(math.floor(mtad)) + '_tag_1_banner.txt': #Find the CLs file in point directory
-                    banner_file_path = os.path.join(root, file) #Attach point directory path to file name
-                    banner_file = open(banner_file_path, 'r')
-                    tad_width_line = banner_file.readlines()[616] #Retrieve the line containing the dark tau odd width from the banner file
-                    tad_width = tad_width_line[17:29] #Retrieve the value for dark tau odd width from the line
-                    width_mass_ratio = float(tad_width) / mtad
+                    width_mass_ratio = tau_odd_decay_width(mtad, mvd, mtap, gD) / mtad
                     all_tau_width_mass_ratios[mvd_index][mtad_index] = width_mass_ratio # 0 is inserted if there was no event file created by MadGraph (for not allowed, ignored or crashed points)
 
     #Save cross sections to save file
@@ -210,87 +218,121 @@ def retrieve_data(scan_path):
 
     return [all_cross_sections, all_low_efficiencies, all_high_efficiencies, all_tau_width_mass_ratios] #Data stored in a 2D numpy arrays
 
-def exclusion_discovery_significance_contours(scan_paths, luminosity):
+def exclusion_discovery_significance_contours(scan_paths, luminosity,
+                                              relic_density_constraint = True,
+                                              width_mass_ratio_lines = True,
+                                              decreased_background_uncertainty = False):
+    #Supports plotting several scans in the same graph. If multiple scans
+    #have different values of the coupling, the strictest relic density constraint
+    #is applied (which is for the lowest coupling). The strictest width/mass curves
+    #are drawn (which is for the highest coupling). In general density constraints
+    #and width/mass curves are not recommended to be drawn when plotting for
+    #multiple couplings, as it will be a bit unclear
     significance_set = []
     tau_width_mass_ratios = []
-    relic_densities = []
     dark_couplings = []
     X_axises = []
     Y_axises = []
+    exclusion_significances = []
+    discovery_significances = []
     for i in range(len(scan_paths)):
-        dark_couplings.append(read_save_file(scan_paths[i] + '/saved_scan_data', 7)[0])
         mvd_properties = read_save_file(scan_paths[i] + '/saved_scan_data', 1)
         mtad_properties = read_save_file(scan_paths[i] + '/saved_scan_data', 2)
-        X_axises.append(np.array(inclusive_range(mtad_properties[0], mtad_properties[1], mtad_properties[2]))) #mtad on x-axis
-        Y_axises.append(np.array(inclusive_range(mvd_properties[0], mvd_properties[1], mvd_properties[2]))) #mvd on y-axis
-    for scan_path in scan_paths:
-        dark_couplings.append(read_save_file(scan_paths[i] + '/saved_scan_data', 7)[0])
-        cross_efficiencies = retrieve_data(scan_path)
+        cross_efficiencies = retrieve_data(scan_paths[i])
         cross_sections = cross_efficiencies[0]
         low_efficiencies = cross_efficiencies[1]
         high_efficiencies = cross_efficiencies[2]
         tau_width_mass_ratios.append(cross_efficiencies[3])
-        significance_set.append(significance_calculator(scan_path, luminosity, cross_sections, low_efficiencies, high_efficiencies, 'Zstats'))
-        relic_densities.append(relic_density(scan_path, dark_couplings[i]))
+        dark_couplings.append(read_save_file(scan_paths[i] + '/saved_scan_data', 7)[0])
+        X_axises.append(np.array(inclusive_range(mtad_properties[0], mtad_properties[1], mtad_properties[2]))) #mtad on x-axis
+        Y_axises.append(np.array(inclusive_range(mvd_properties[0], mvd_properties[1], mvd_properties[2]))) #mvd on y-axis
+        same_scan_exclusion = []
+        same_scan_discovery = []
+        for j in range(len(luminosity)): #For scan_path[i], append the significances of all luminosities in a row
+            significance_set = significance_calculator(scan_paths[i], luminosity[j], cross_sections, low_efficiencies, high_efficiencies, decreased_background_uncertainty = decreased_background_uncertainty)
+            exclusion = significance_set[0]
+            discovery = significance_set[1]
+            same_scan_exclusion.append(exclusion)
+            same_scan_discovery.append(discovery)
+        exclusion_significances.append(same_scan_exclusion)
+        discovery_significances.append(same_scan_discovery)
 
-    #Code supports plotting several scans in the same graph.
-    #Separate the exclusion and discovery arrays from the significance output
-    exclusion_significances = []
-    discovery_significances = []
-    for i in range(len(significance_set)):
-        exclusion_significances.append(significance_set[i][1])
-        discovery_significances.append(significance_set[i][2])
+    #Max and min value of coupling are used for the constant width/mass ratio lines
+    #and the relic density constraint respectively
+    max_coupling = max(dark_couplings)
+    min_coupling = min(dark_couplings)
+    if relic_density_constraint:
+        relic_densities = relic_density(scan_paths[dark_couplings.index(min_coupling)], min_coupling)
+    if width_mass_ratio_lines:
+        tau_width_mass_ratios = tau_width_mass_ratios[dark_couplings.index(max_coupling)]
 
-    print(exclusion_significances)
-    print(discovery_significances)
-    print('densities: ', relic_densities)
-    print('ratios: ', tau_width_mass_ratios)
-
-    discovery_levels = inclusive_range(5,5, 10) #Discovery at Z > 5
+    discovery_levels = inclusive_range(5, 5, 10) #Discovery at Z > 5
     exclusion_levels = inclusive_range(2, 2, 10) #Exclusion at Z > 2
     relic_levels = inclusive_range(0.12, 50000, 50000) # 'Everything' larger than 0.12 (Planck measurement for relic density)
 
-    plt.figure()
-    linestyles = ['solid', 'dashed', 'dashdot', 'dotted', 'solid', 'dashed', 'dashdot', 'dotted']
-    relic_colors = ['purple', 'pink', 'cyan', 'indigo']
+    linestyles = ['solid', 'dashed', 'dotted', 'dashdot']
+    exclusion_colors = ['green', 'yellow', 'black']
+    discovery_colors = ['blue', 'cyan', 'magenta']
     exclusion_contours = []
     discovery_contours = []
-    relic_density_regions = []
     for i in range(len(exclusion_significances)):
-        linestyle = linestyles[i]
-        exclusion_contours.append(plt.contour(X_axises[i], Y_axises[i], exclusion_significances[i], exclusion_levels, colors = 'green', linestyles = linestyles[i]))
-        discovery_contours.append(plt.contour(X_axises[i], Y_axises[i], discovery_significances[i], discovery_levels, colors = 'blue', linestyles = linestyles[i]))
-        relic_density_regions.append(plt.contourf(X_axises[i], Y_axises[i], relic_densities[i], relic_levels, colors = relic_colors[i], alpha = 0.3))
-    NWA_safe = [True] * len(tau_width_mass_ratios)
-    # Set NWA_safe to false if any ratios are larger than 0.01, which will plot the constant ratio lines if necessary
-    for k in range(len(tau_width_mass_ratios)):
-        for i in range(len(tau_width_mass_ratios[k])):
-            line = tau_width_mass_ratios[k][i]
+        same_scan_exclusion_contours = []
+        same_scan_discovery_contours = []
+        for j in range(len(exclusion_significances[i])):
+            same_scan_exclusion_contours.append(plt.contour(X_axises[i], Y_axises[i], exclusion_significances[i][j], exclusion_levels, colors = exclusion_colors[i], linestyles = linestyles[j]))
+            if not luminosity[j] == 139:
+                same_scan_discovery_contours.append(plt.contour(X_axises[i], Y_axises[i], discovery_significances[i][j], discovery_levels, colors = discovery_colors[i], linestyles = linestyles[j]))
+        exclusion_contours.append(same_scan_exclusion_contours)
+        discovery_contours.append(same_scan_discovery_contours)
+
+    #Color the region forbidden by too high relic densities associated to the lowest coupling
+    if relic_density_constraint:
+        relic_density_color = plt.contourf(X_axises[dark_couplings.index(min_coupling)], Y_axises[dark_couplings.index(min_coupling)], relic_densities, relic_levels, colors = 'purple', alpha = 0.3)
+
+    if width_mass_ratio_lines:
+        NWA_safe = True
+        ratio_levels = [0.1, 0.3, 0.5]
+        ratio_color_levels = inclusive_range(0.5, 10, 10)
+        # Set NWA_safe to false if any ratio is larger than 0.1, which will plot the constant ratio lines if necessary
+        for i in range(len(tau_width_mass_ratios)):
+            line = tau_width_mass_ratios[i]
             for j in range(len(line)):
                 ratio = float(line[j])
-                if ratio >= 0.01:
-                    NWA_safe[k] = False
+                if ratio >= 0.1:
+                    NWA_safe = False
                     break
-    #Plot the constant ratio lines if even 'close' to breaking the NWA in any point
-    if not NWA_safe:
-        constant_ratios = []
-        ratio_levels = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5]
-        for i in range(len(constant_ratios)):
-            constant_ratios.append(plt.contour(X_axises[i],Y_axises[i], tau_width_mass_ratios[i], ratio_levels, colors = 'black', alpha = 0.7, linestyles = linestyles[i]))
-            plt.clabel(constant_ratios[i], inline_spacing = -12, fontsize = 14) #Label the lines with their ratios
+        #Plot the constant ratio lines if close to breaking the NWA in any point, otherwise omit them
+        if not NWA_safe:
+            constant_ratios = plt.contour(X_axises[dark_couplings.index(max_coupling)], Y_axises[dark_couplings.index(max_coupling)], tau_width_mass_ratios, ratio_levels, colors = 'black', alpha = 0.7, linestyles = 'dashed')
+            plt.clabel(constant_ratios, inline_spacing = -12, fontsize = 14) #Label the lines with their ratios
+            plt.contourf(X_axises[dark_couplings.index(max_coupling)], Y_axises[dark_couplings.index(max_coupling)], tau_width_mass_ratios, ratio_color_levels, colors = 'blue', alpha = 0.5)
+
+    legends = []
+    for i in range(len(exclusion_contours)):
+        for j in range(len(luminosity)):
+                legends.append(mlines.Line2D([], [], color=exclusion_colors[i], linestyle = linestyles[j], label='Z > 2, g' + r'$_D$ = ' +str(dark_couplings[i]) + ', L = ' + str(luminosity[j]) + 'fb' + r'$^{-1}$', linewidth=3))
+                if not luminosity[j] == 139:
+                    legends.append(mlines.Line2D([], [], color=discovery_colors[i], linestyle = linestyles[j], label='Z > 5, g' + r'$_D$ = ' +str(dark_couplings[i]) + ', L = ' + str(luminosity[j]) + 'fb' + r'$^{-1}$', linewidth=3))
+    legends.append(mlines.Line2D(range(1), range(1), color="white", marker='o', markerfacecolor="purple", label = 'Overabundant relic density', alpha = 0.3, markersize = 15))
+
     ax = plt.gca()
-    ax.set_ylim([mvd_properties[0], mvd_properties[1]])
-    ax.set_xlim([mtad_properties[0], mtad_properties[1]])
+    ax.set_ylim([0, 455])
+    ax.set_xlim([0, 760])
     x = np.arange(0, mtad_properties[1])
     plt.plot(x, x, 'k') # Kinematical limit is mvd = mtad
-    ax.fill_between(x, 500, x, facecolor = 'red') #Fill the kinematically forbidden region with red
+    ax.fill_between(x, 800, x, facecolor = 'red') #Fill the kinematically forbidden region with red
     plt.text(80, 205, 'm' + r'$_{W_{D \pm}}$ > m' + r'$_{\psi_D}$', fontsize = 20)
     plt.ylabel('m' + r'$_{W_{D \pm}}$ [GeV]',fontsize = 18)
     plt.xlabel('m' + r'$_{\psi_D}$ [GeV]', fontsize = 18)
-    legends = []
-    for i in range(len(exclusion_contours)):
-        legends.append(mlines.Line2D([], [], color='blue', linestyle = linestyles[i], label='Z > 5, g' + r'$_D$ = ' +str(dark_couplings[i]), linewidth=3))
-        legends.append(mlines.Line2D([], [], color='green', linestyle = linestyles[i], label='Z > 2, g' + r'$_D$ = ' +str(dark_couplings[i]), linewidth=3))
-    ax.legend(handles = legends, loc = 'upper right', fontsize = 20) #loc = (0.43, 0.85)
-    plt.title('Exclusion and discovery contours; No scalar mixing, m' + r'$_\psi$=800GeV, m' + r'$_{h2}$=300GeV, L='+str(luminosity)+'fb' + r'$^{-1}$', fontsize = 18) #g' + r'$_D$=0.01'
+    ax.legend(handles = legends, loc = 'upper left', fontsize = 20)
+    if decreased_background_uncertainty:
+        background_uncertainty = 'decreased background uncertainty (10%)'
+    else:
+        background_uncertainty = 'current background uncertainty (30%)'
+    print('discovery contours', discovery_contours)
+    if max(luminosity) <= 139: #No need to plot discovery contours for current luminosities, since DM hasn't been discovered yet
+        title = 'Exclusion contour(s): '
+    else:
+        title = 'Exclusion and discovery contour(s): '
+    plt.title(title + 'm' + r'$_\psi$=800GeV, ' + background_uncertainty, fontsize = 18)
     plt.show()
